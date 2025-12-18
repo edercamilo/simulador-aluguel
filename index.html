@@ -68,7 +68,7 @@
           <!-- Pacote Base (sempre incluído) -->
           <div class="staticBox">
             <div class="value">Pacote Base (já incluído no valor do aluguel)</div>
-            <div class="note" style="margin-top:6px;">Inclui:</div>
+            <div class="note" style="margin-top:6px;">Incl_attach:</div>
             <ul class="clean">
               <li>Pintar fachada inteira</li>
               <li>Colocar calhas e novos dutos</li>
@@ -151,7 +151,7 @@
             <button type="button" id="btnShare">Compartilhar</button>
             <button type="button" id="btnSave">Salvar decisão</button>
           </div>
-          <p class="note">“Compartilhar” abre o menu do celular (se suportado). “Salvar decisão” registra automaticamente (ex.: em planilha). Se algo falhar, use “Compartilhar”.</p>
+          <p class="note">“Compartilhar” abre o menu do celular (se suportado). “Salvar decisão” registra automaticamente (em planilha). Se algo falhar, use “Compartilhar”.</p>
         </div>
       </div>
 
@@ -175,10 +175,8 @@
     // =========================
     // CONFIGURAÇÃO DO "SALVAR"
     // =========================
-    // 1) Cole aqui a URL do seu Web App (Google Apps Script)
-    const SCRIPT_URL = "COLE_AQUI_A_URL_DO_WEB_APP";
-    // 2) Use o mesmo token no Apps Script (simples controle contra spam)
-    const SAVE_TOKEN = "DEFINA_SEU_TOKEN_AQUI";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEcNFvW9USYPKZCGUbxPWqLfhQLUXW_K7XH2hBK7z8FRN-kzKIgvViUPni8-aJc1fi6w/exec";
+    const SAVE_TOKEN = "aluguelluciana";
 
     const BASE = 1400;
     const PREMIUM_FIXED = 1750;
@@ -235,7 +233,6 @@
       const mode = getMode();
 
       if (mode === 'premium') {
-        // Premium: force options off + clear selections
         clearChecks();
         setOptionsEnabled(false);
 
@@ -257,7 +254,6 @@ Data/Hora: ${nowBR()}`;
         return;
       }
 
-      // Normal mode
       setOptionsEnabled(true);
       modeLabel.textContent = 'Padrão';
       sideHint.textContent = 'Base + soma dos itens opcionais selecionados.';
@@ -282,18 +278,12 @@ Total: ${fmt(total)}/mês
 Data/Hora: ${nowBR()}`;
     }
 
-    // =====
-    // SAVE
-    // =====
     async function saveDecision() {
-      if (!SCRIPT_URL || SCRIPT_URL.startsWith("COLE_AQUI")) {
-        alert("Configuração pendente: defina SCRIPT_URL no código.");
-        return;
-      }
-      if (!SAVE_TOKEN || SAVE_TOKEN.startsWith("DEFINA")) {
-        alert("Configuração pendente: defina SAVE_TOKEN no código.");
-        return;
-      }
+      const btn = document.getElementById("btnSave");
+      const oldText = btn.textContent;
+
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
 
       const mode = getMode();
       const chosen = mode === "premium" ? ["A","B","C","D"] : getSelectedKeys();
@@ -305,16 +295,11 @@ Data/Hora: ${nowBR()}`;
         items: mode === "premium"
           ? "Tudo incluso (A+B+C+D)"
           : (chosen.length ? chosen.map(k => `Item ${k}`).join(" + ") : "Somente Base"),
-        total: totalValue.textContent,     // já formatado na tela
-        summary: summary.value,            // texto completo
+        total: totalValue.textContent,
+        summary: summary.value,
         origin: window.location.href,
         user_agent: navigator.userAgent
       };
-
-      const btn = document.getElementById("btnSave");
-      const oldText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = "Salvando...";
 
       try {
         await fetch(SCRIPT_URL, {
@@ -357,7 +342,7 @@ Data/Hora: ${nowBR()}`;
         try {
           await navigator.share({ title: 'Escolha do pacote de aluguel', text });
           return;
-        } catch (e) { /* cancelado/erro -> fallback */ }
+        } catch (e) {}
       }
 
       try {
