@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulador de Pacote de Aluguel</title>
+  <style>
+    :root { --bg:#0b0f17; --card:#121a29; --muted:#9fb0c7; --text:#eaf0fb; --line:#22304a; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .card + .card { margin-top: 12px; }
+
+    h1 { font-size: 20px; margin: 6px 0 10px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    p, li { color: var(--muted); margin: 6px 0; line-height: 1.35; }
+
+    .pill { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid var(--line); color: var(--muted); font-size: 12px; margin-right: 6px; }
+
+    .layout { display:flex; gap: 12px; align-items: flex-start; }
+    .main { flex: 1 1 auto; min-width: 0; }
+    .side { width: 360px; position: sticky; top: 12px; flex: 0 0 360px; }
+
+    @media (max-width: 980px){
+      .layout { flex-direction: column; }
+      .side { width: auto; position: static; flex: 1 1 auto; }
+    }
+
+    label.option { display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid var(--line); border-radius:12px; cursor:pointer; margin:8px 0; }
+    label.staticBox { display:block; padding:10px; border:1px solid var(--line); border-radius:12px; margin:8px 0; }
+    input[type="checkbox"], input[type="radio"] { margin-top: 3px; transform: scale(1.05); }
+
+    .row { display:flex; justify-content: space-between; gap: 10px; margin: 6px 0; }
+    .value { font-weight: 700; color: var(--text); }
+    .note { font-size: 12px; color: var(--muted); }
+
+    ul.clean { margin: 8px 0 0 16px; }
+
+    .btns { display:flex; flex-wrap: wrap; gap:8px; margin-top: 10px; }
+    button { background:#1a2540; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:pointer; }
+    button:hover { filter: brightness(1.08); }
+
+    textarea { width:100%; min-height: 140px; background:#0e1422; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px; resize: vertical; }
+
+    .disabled { opacity: .55; }
+    hr.sep { border:0; border-top:1px solid var(--line); margin:10px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Simulador de aluguel</h1>
+      <p>
+        <span class="pill">Contrato: 30 meses</span>
+        <span class="pill">Permanência mínima: 24 meses</span>
+        <span class="pill">Reajuste anual: IVAR/FGV</span>
+      </p>
+      <p>Este é um simulador de aluguel. Marque os itens que deseja e veja em tempo real o valor do aluguel ajustado. Ao final, compartilhe sua decisão conosco.</p>
+    </div>
+
+    <div class="layout" style="margin-top:12px;">
+      <!-- MAIN (left) -->
+      <div class="main">
+        <div class="card" id="cardChoice">
+          <h2>Escolha do pacote</h2>
+
+          <!-- Pacote Base (sempre incluído) -->
+          <div class="staticBox">
+            <div class="value">Pacote Base (já incluído no valor do aluguel)</div>
+            <div class="note" style="margin-top:6px;">Inclui:</div>
+            <ul class="clean">
+              <li>Pintar fachada inteira</li>
+              <li>Colocar calhas e novos dutos</li>
+              <li>Pintar janela da sala</li>
+              <li>Retocar pintura (sala, quartos, lavanderia, closet, banheiro e quartinho da bagunça)</li>
+              <li>Tirar papel de parede, lixar e pintar paredes e teto do quarto de solteiro</li>
+            </ul>
+          </div>
+
+          <!-- Itens opcionais (modo padrão) -->
+          <div id="optionsBlock" style="margin-top:12px;">
+            <h2>Itens opcionais</h2>
+
+            <label class="option">
+              <input type="checkbox" id="optA">
+              <div>
+                <div class="value">Item A — Banheiro/Lavabo: finalizar a obra</div>
+                <div class="note">Acréscimo: +R$ 50/mês</div>
+              </div>
+            </label>
+
+            <label class="option">
+              <input type="checkbox" id="optB">
+              <div>
+                <div class="value">Item B — Sala: porta de esquadria de alumínio (2 folhas)</div>
+                <div class="note">Acréscimo: +R$ 100/mês</div>
+              </div>
+            </label>
+
+            <label class="option">
+              <input type="checkbox" id="optC">
+              <div>
+                <div class="value">Item C — Armário planejado embaixo da pia (área gourmet)</div>
+                <div class="note">Acréscimo: +R$ 70/mês</div>
+              </div>
+            </label>
+
+            <label class="option">
+              <input type="checkbox" id="optD">
+              <div>
+                <div class="value">Item D — Deixar a geladeira em comodato</div>
+                <div class="note">Acréscimo: +R$ 40/mês</div>
+              </div>
+            </label>
+
+            <div class="btns">
+              <button type="button" id="btnClear">Limpar seleção</button>
+            </div>
+
+            <p class="note" id="modeNote"></p>
+          </div>
+
+          <!-- Pacote Premium (no final) -->
+          <div style="margin-top:14px;">
+            <h2>Pacote Premium</h2>
+
+            <label class="option">
+              <input type="radio" name="mode" value="normal" checked>
+              <div>
+                <div class="value">Modo padrão (Base + opcionais)</div>
+                <div class="note">Selecione os itens opcionais acima para ajustar o aluguel.</div>
+              </div>
+            </label>
+
+            <label class="option">
+              <input type="radio" name="mode" value="premium">
+              <div>
+                <div class="value">Pacote Premium</div>
+                <div class="note">Tudo incluso + aluguel fixo por 24 meses: <b>R$ 1.750/mês</b>.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card" id="cardText">
+          <h2>Resumo em texto</h2>
+          <textarea id="summary" readonly></textarea>
+          <div class="btns">
+            <button type="button" id="btnCopy">Copiar texto</button>
+            <button type="button" id="btnShare">Compartilhar</button>
+          </div>
+          <p class="note">O botão “Compartilhar” abre o menu do celular (se suportado). Se não aparecer, o texto será copiado para você colar no WhatsApp.</p>
+        </div>
+      </div>
+
+      <!-- SIDE (right, fixed/sticky summary) -->
+      <div class="side">
+        <div class="card" id="cardSummary">
+          <h2>Resumo (tempo real)</h2>
+          <div class="row"><span>Aluguel base</span><span class="value" id="baseValue"></span></div>
+          <div class="row"><span>Modo</span><span class="value" id="modeLabel">—</span></div>
+          <div class="row"><span>Itens selecionados</span><span class="value" id="itemsCount">0</span></div>
+          <div class="row"><span>Acréscimo total</span><span class="value" id="incrementValue"></span></div>
+          <hr class="sep">
+          <div class="row"><span>Aluguel total</span><span class="value" id="totalValue"></span></div>
+          <p class="note" id="sideHint"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE = 1400;
+    const PREMIUM_FIXED = 1750;
+
+    const ITEMS = {
+      A: { label: 'Item A — Banheiro/Lavabo: finalizar a obra', value: 50, el: () => document.getElementById('optA') },
+      B: { label: 'Item B — Sala: porta de esquadria de alumínio (2 folhas)', value: 100, el: () => document.getElementById('optB') },
+      C: { label: 'Item C — Armário planejado embaixo da pia (área gourmet)', value: 70, el: () => document.getElementById('optC') },
+      D: { label: 'Item D — Deixar a geladeira', value: 40, el: () => document.getElementById('optD') },
+    };
+
+    const fmt = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const nowBR = () => new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    // Side summary fields
+    const baseValue = document.getElementById('baseValue');
+    const incrementValue = document.getElementById('incrementValue');
+    const totalValue = document.getElementById('totalValue');
+    const itemsCount = document.getElementById('itemsCount');
+    const modeLabel = document.getElementById('modeLabel');
+    const sideHint = document.getElementById('sideHint');
+
+    // Main fields
+    const summary = document.getElementById('summary');
+    const modeNote = document.getElementById('modeNote');
+    const optionsBlock = document.getElementById('optionsBlock');
+
+    function getMode() {
+      return document.querySelector('input[name="mode"]:checked').value;
+    }
+
+    function setOptionsEnabled(enabled) {
+      optionsBlock.classList.toggle('disabled', !enabled);
+      Object.values(ITEMS).forEach(it => it.el().disabled = !enabled);
+      document.getElementById('btnClear').disabled = !enabled;
+    }
+
+    function clearChecks() {
+      Object.values(ITEMS).forEach(it => it.el().checked = false);
+    }
+
+    function compute() {
+      baseValue.textContent = fmt(BASE);
+      const mode = getMode();
+
+      if (mode === 'premium') {
+        // Premium: force options off + clear selections
+        clearChecks();
+        setOptionsEnabled(false);
+
+        modeLabel.textContent = 'Premium';
+        sideHint.textContent = 'Premium: tudo incluso + aluguel fixo por 24 meses.';
+        modeNote.textContent = '';
+
+        const total = PREMIUM_FIXED;
+        const inc = total - BASE;
+
+        incrementValue.textContent = fmt(inc);
+        totalValue.textContent = fmt(total);
+        itemsCount.textContent = 'Tudo incluso';
+
+        summary.value =
+`Escolha: Pacote Premium
+Aluguel: ${fmt(PREMIUM_FIXED)}/mês (fixo por 24 meses)
+Data/Hora: ${nowBR()}`;
+        return;
+      }
+
+      // Normal mode
+      setOptionsEnabled(true);
+      modeLabel.textContent = 'Padrão';
+      sideHint.textContent = 'Base + soma dos itens opcionais selecionados.';
+      modeNote.textContent = 'Selecione os itens opcionais acima para ajustar o aluguel.';
+
+      let inc = 0;
+      let chosen = [];
+      Object.entries(ITEMS).forEach(([k, it]) => {
+        if (it.el().checked) {
+          inc += it.value;
+          chosen.push(k);
+        }
+      });
+
+      const total = BASE + inc;
+
+      incrementValue.textContent = fmt(inc);
+      totalValue.textContent = fmt(total);
+      itemsCount.textContent = String(chosen.length);
+
+      const lines = chosen.length
+        ? chosen.map(k => `- ${ITEMS[k].label} (+${fmt(ITEMS[k].value)}/mês)`).join('\n')
+        : '- Nenhum opcional selecionado';
+
+      summary.value =
+`Escolha: Pacote Base + opcionais
+Base: ${fmt(BASE)}/mês
+Opcionais:
+${lines}
+Total: ${fmt(total)}/mês
+Data/Hora: ${nowBR()}`;
+    }
+
+    // Events
+    Object.values(ITEMS).forEach(it => it.el().addEventListener('change', compute));
+    document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', compute));
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+      clearChecks();
+      compute();
+    });
+
+    document.getElementById('btnCopy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(summary.value);
+        alert('Texto copiado.');
+      } catch (e) {
+        alert('Não foi possível copiar automaticamente. Selecione o texto e copie manualmente.');
+      }
+    });
+
+    document.getElementById('btnShare').addEventListener('click', async () => {
+      const text = summary.value;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Escolha do pacote de aluguel', text });
+          return;
+        } catch (e) {
+          // cancelado pelo usuário ou erro -> fallback
+        }
+      }
+
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Seu navegador não abriu o compartilhamento. O texto foi copiado — cole no WhatsApp.');
+      } catch (e) {
+        alert('Seu navegador não suportou compartilhar/copiar automaticamente. Selecione o texto e copie manualmente.');
+      }
+    });
+
+    // Init
+    compute();
+  </script>
+</body>
+</html>
