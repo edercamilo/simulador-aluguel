@@ -39,6 +39,7 @@
     .btns { display:flex; flex-wrap: wrap; gap:8px; margin-top: 10px; }
     button { background:#1a2540; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:pointer; }
     button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: .65; cursor: not-allowed; }
 
     textarea { width:100%; min-height: 140px; background:#0e1422; color:var(--text); border:1px solid var(--line); border-radius:12px; padding:10px; resize: vertical; }
 
@@ -148,8 +149,9 @@
           <div class="btns">
             <button type="button" id="btnCopy">Copiar texto</button>
             <button type="button" id="btnShare">Compartilhar</button>
+            <button type="button" id="btnSave">Salvar decisão</button>
           </div>
-          <p class="note">O botão “Compartilhar” abre o menu do celular (se suportado). Se não aparecer, o texto será copiado para você colar no WhatsApp.</p>
+          <p class="note">“Compartilhar” abre o menu do celular (se suportado). “Salvar decisão” registra automaticamente (ex.: em planilha). Se algo falhar, use “Compartilhar”.</p>
         </div>
       </div>
 
@@ -170,6 +172,14 @@
   </div>
 
   <script>
+    // =========================
+    // CONFIGURAÇÃO DO "SALVAR"
+    // =========================
+    // 1) Cole aqui a URL do seu Web App (Google Apps Script)
+    const SCRIPT_URL = "COLE_AQUI_A_URL_DO_WEB_APP";
+    // 2) Use o mesmo token no Apps Script (simples controle contra spam)
+    const SAVE_TOKEN = "DEFINA_SEU_TOKEN_AQUI";
+
     const BASE = 1400;
     const PREMIUM_FIXED = 1750;
 
@@ -197,7 +207,7 @@
     const optionsBlock = document.getElementById('optionsBlock');
 
     function getMode() {
-      return document.querySelector('input[name="mode"]:checked').value;
+      return document.querySelector('input[name="mode"]:checked').value; // "normal" ou "premium"
     }
 
     function setOptionsEnabled(enabled) {
@@ -208,6 +218,16 @@
 
     function clearChecks() {
       Object.values(ITEMS).forEach(it => it.el().checked = false);
+    }
+
+    function getSelectedKeys() {
+      return Object.keys(ITEMS).filter(k => ITEMS[k].el().checked);
+    }
+
+    function buildItemsLines(keys) {
+      return keys.length
+        ? keys.map(k => `- ${ITEMS[k].label} (+${fmt(ITEMS[k].value)}/mês)`).join('\n')
+        : '- Nenhum opcional selecionado';
     }
 
     function compute() {
@@ -243,24 +263,15 @@ Data/Hora: ${nowBR()}`;
       sideHint.textContent = 'Base + soma dos itens opcionais selecionados.';
       modeNote.textContent = 'Selecione os itens opcionais acima para ajustar o aluguel.';
 
-      let inc = 0;
-      let chosen = [];
-      Object.entries(ITEMS).forEach(([k, it]) => {
-        if (it.el().checked) {
-          inc += it.value;
-          chosen.push(k);
-        }
-      });
-
+      const chosen = getSelectedKeys();
+      const inc = chosen.reduce((acc, k) => acc + ITEMS[k].value, 0);
       const total = BASE + inc;
 
       incrementValue.textContent = fmt(inc);
       totalValue.textContent = fmt(total);
       itemsCount.textContent = String(chosen.length);
 
-      const lines = chosen.length
-        ? chosen.map(k => `- ${ITEMS[k].label} (+${fmt(ITEMS[k].value)}/mês)`).join('\n')
-        : '- Nenhum opcional selecionado';
+      const lines = buildItemsLines(chosen);
 
       summary.value =
 `Escolha: Pacote Base + opcionais
@@ -269,6 +280,56 @@ Opcionais:
 ${lines}
 Total: ${fmt(total)}/mês
 Data/Hora: ${nowBR()}`;
+    }
+
+    // =====
+    // SAVE
+    // =====
+    async function saveDecision() {
+      if (!SCRIPT_URL || SCRIPT_URL.startsWith("COLE_AQUI")) {
+        alert("Configuração pendente: defina SCRIPT_URL no código.");
+        return;
+      }
+      if (!SAVE_TOKEN || SAVE_TOKEN.startsWith("DEFINA")) {
+        alert("Configuração pendente: defina SAVE_TOKEN no código.");
+        return;
+      }
+
+      const mode = getMode();
+      const chosen = mode === "premium" ? ["A","B","C","D"] : getSelectedKeys();
+
+      const payload = {
+        token: SAVE_TOKEN,
+        ts: nowBR(),
+        mode: mode === "premium" ? "Premium" : "Base + opcionais",
+        items: mode === "premium"
+          ? "Tudo incluso (A+B+C+D)"
+          : (chosen.length ? chosen.map(k => `Item ${k}`).join(" + ") : "Somente Base"),
+        total: totalValue.textContent,     // já formatado na tela
+        summary: summary.value,            // texto completo
+        origin: window.location.href,
+        user_agent: navigator.userAgent
+      };
+
+      const btn = document.getElementById("btnSave");
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Salvando...";
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          mode: "no-cors"
+        });
+        alert("Decisão salva com sucesso. Obrigado!");
+      } catch (e) {
+        alert("Não foi possível salvar automaticamente. Use o botão Compartilhar como alternativa.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
     }
 
     // Events
@@ -296,9 +357,7 @@ Data/Hora: ${nowBR()}`;
         try {
           await navigator.share({ title: 'Escolha do pacote de aluguel', text });
           return;
-        } catch (e) {
-          // cancelado pelo usuário ou erro -> fallback
-        }
+        } catch (e) { /* cancelado/erro -> fallback */ }
       }
 
       try {
@@ -308,6 +367,8 @@ Data/Hora: ${nowBR()}`;
         alert('Seu navegador não suportou compartilhar/copiar automaticamente. Selecione o texto e copie manualmente.');
       }
     });
+
+    document.getElementById('btnSave').addEventListener('click', saveDecision);
 
     // Init
     compute();
